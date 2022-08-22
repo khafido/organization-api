@@ -21,7 +21,17 @@ exports.findOne = (req, res) => {
             employee
         });
     } else {
-        res.json({employee: employees.find(employee => employee.employeeId == id), status: 200});
+        let employee = employees.find(employee => employee.employeeId == id);
+        if (employee) {
+            res.status(200).json({
+                message: "Employee found",
+                employee
+            });
+        } else {
+            res.status(404).json({
+                message: "Employee not found"
+            });
+        }
     }
 }
 
