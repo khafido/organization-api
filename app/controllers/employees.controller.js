@@ -1,135 +1,140 @@
-const employees = [
-    {
-      "employeeId": 1,
-      "name": "Guy Gardner",
-      "managerId": 15
-    },
-    {
-      "employeeId": 2,
-      "name": "Arthur Curry",
-      "managerId": 12
-    },
-    {
-      "employeeId": 3,
-      "name": "John Stewart",
-      "managerId": 7
-    },
-    {
-      "employeeId": 4,
-      "name": "Ray Palmer",
-      "managerId": 6
-    },
-    {
-      "employeeId": 5,
-      "name": "Jessica Cruz",
-      "managerId": 15
-    },
-    {
-      "employeeId": 6,
-      "name": "Shayera Hol",
-      "managerId": 12
-    },
-    {
-      "employeeId": 7,
-      "name": "Bruce Wayne",
-      "managerId": 17
-    },
-    {
-      "employeeId": 8,
-      "name": "Kyle Rayner",
-      "managerId": 15
-    },
-    {
-      "employeeId": 9,
-      "name": "Billy Batson",
-      "managerId": 6
-    },
-    {
-      "employeeId": 10,
-      "name": "Kiliwog",
-      "managerId": 3
-    },
-    {
-      "employeeId": 11,
-      "name": "Dinah Drake",
-      "managerId": 7
-    },
-    {
-      "employeeId": 12,
-      "name": "Diana Prince",
-      "managerId": 17
-    },
-    {
-      "employeeId": 13,
-      "name": "Sinestro",
-      "managerId": 3
-    },
-    {
-      "employeeId": 14,
-      "name": "J'onn J'onzz",
-      "managerId": 12
-    },
-    {
-      "employeeId": 15,
-      "name": "Hal Jordan",
-      "managerId": 3
-    },
-    {
-      "employeeId": 16,
-      "name": "Oliver Queen",
-      "managerId": 7
-    },
-    {
-      "employeeId": 17,
-      "name": "Clark Kent"
-    },
-    {
-      "employeeId": 18,
-      "name": "Zatanna Zatara",
-      "managerId": 7
-    },
-    {
-      "employeeId": 19,
-      "name": "Barry Allen",
-      "managerId": 17
-    }
-  ]
+const { validationResult } = require('express-validator');
+let employees = require('./employees');
 
 exports.findAll = (req, res) => {
     res.status(200).json({
-        employees: employees
+        message: "Employees found",
+        employees
     });
-}
-
-function findSubordinates(employeeId) {
-    let subordinates = [];
-    employees.forEach(e => {
-        let parents = [employeeId];
-
-        if (e.managerId == employeeId) {
-            if (!parents.includes(e.employeeId)) {
-                console.log(e);
-                subordinates.push(findSubordinates(e.employeeId));
-            }
-            parents.push(e.employeeId);
-        }
-    });
-    
-    return subordinates;
 }
 
 exports.findOne = (req, res) => {
     let id = req.params.id;
     let includeReportingTree = req.query.includeReportingTree;
     
-    if (includeReportingTree) {
+    if (includeReportingTree=="true") {
         let employee = employees.find(employee => employee.employeeId == id);
-        
+        employee.subordinates = findSubordinates(id);
+
         res.status(200).json({
-            employee,
-            subordinates: findSubordinates(id)
+            message: "Employee found",
+            employee
         });
     } else {
         res.json({employee: employees.find(employee => employee.employeeId == id), status: 200});
     }
+}
+
+exports.create = (req, res) => {
+    let highestId = employees.reduce((prev, curr) => {
+        return prev.employeeId > curr.employeeId ? prev : curr;
+    }).employeeId || 0;
+
+    let employee = {
+        employeeId: highestId + 1,
+        name: req.body.name,
+        managerId: req.body.managerId
+    };
+
+    let errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(422).json({ errors: errors.array() });
+    }
+
+    employees.push(employee);
+    
+    if (employees.find(e => e.employeeId == employee.managerId)) {
+        res.status(201).json({
+            message: "Employee created successfully",
+            employee
+        });
+    } else {
+        res.status(400).json({
+            message: "Invalid managerId, manager not found"
+        });
+    }
+}
+
+exports.update = (req, res) => {
+    let id = req.params.id;
+    let employee = employees.find(e => e.employeeId == id);
+    if (!employee) {
+        return res.status(404).json({
+            message: "Employee not found"
+        });
+    }
+
+    let newEmployee = {
+        employeeId: employee.employeeId,
+        name: req.body.name,
+        managerId: req.body.managerId
+    };
+
+    let errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(422).json({ errors: errors.array() });
+    }
+
+    if (employees.find(e => e.employeeId == employee.managerId)) {
+        Object.keys(newEmployee).forEach(k => {
+            employee[k] = newEmployee[k];
+        });
+        res.status(200).json({
+            message: "Employee updated successfully",
+            employee
+        });
+    } else {
+        res.status(400).json({
+            message: "Invalid managerId, manager not found"
+        });
+    }
+}
+
+exports.delete = (req, res) => {
+    let id = req.params.id;
+    let employee = employees.find(e => e.employeeId == id);
+    employees = employees.filter(e => e.employeeId != id);
+
+    if (employee) {
+        res.status(200).json({
+            message: "Employee deleted successfully",
+            employee
+        });
+    } else {
+        res.status(404).json({
+            message: "Employee not found"
+        });
+    }
+}
+
+function copy(obj) {
+    var output, v, key;
+    output = Array.isArray(obj) ? [] : {};
+    for (key in obj) {
+        v = obj[key];
+        output[key] = (typeof v === "object") ? copy(v) : v;
+    }
+    return output;
+}
+
+function findSubordinates(employeeId) {
+    let subordinates = [];
+    let exceptMine = copy(employees).filter(employee => employee.employeeId != employeeId);
+
+    exceptMine.forEach(e => {
+        let parents = [employeeId];
+
+        if (e.managerId == employeeId) {
+            if (!parents.includes(e.employeeId)) {
+                e.subordinates = findSubordinates(e.employeeId);
+                if (!e.subordinates.length) {
+                    delete e.subordinates;
+                }
+                subordinates.push(e);
+            }
+            parents.push(e.employeeId);
+        }
+    });
+    
+    return subordinates;
 }
