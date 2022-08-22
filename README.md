@@ -5,9 +5,9 @@
 - npm start / node index
 
 ## API Endpoint
-GET /employees
-GET /employees/{employeeId}
-GET /employees/{employeeId}?includeReportingTree=true
-POST /employees
-DELETE /employees/{employeeId}
-PUT /employees/{employeeId}
+- GET /employees
+- GET /employees/{employeeId}
+- GET /employees/{employeeId}?includeReportingTree=true
+- POST /employees
+- DELETE /employees/{employeeId}
+- PUT /employees/{employeeId}
