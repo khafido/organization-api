@@ -13,7 +13,7 @@ exports.findOne = (req, res) => {
     let includeReportingTree = req.query.includeReportingTree;
     
     if (includeReportingTree=="true") {
-        let employee = employees.find(employee => employee.employeeId == id);
+        let employee = copy(employees).find(employee => employee.employeeId == id);
         employee.subordinates = findSubordinates(id);
 
         res.status(200).json({
